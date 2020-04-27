@@ -1,9 +1,10 @@
 import glfw
 import numpy as np
+from pyrr import Matrix44
 from OpenGL.GL import glGenVertexArrays, glDeleteBuffers, glBufferData, \
     GL_ARRAY_BUFFER, glBindVertexArray, glBindBuffer, glGenBuffers, GL_FLOAT, \
     GL_FALSE, glVertexAttribPointer, shaders, GL_STATIC_DRAW, \
-    glGetAttribLocation, glEnableVertexAttribArray
+    glGetAttribLocation, glEnableVertexAttribArray, glUniformMatrix4fv
 
 
 # https://rdmilligan.wordpress.com/2016/09/03/opengl-vao-using-python/
@@ -53,6 +54,12 @@ class Program:
         glEnableVertexAttribArray(position)
         return position
 
+    def send_matrix(self, name, matrix, func=glUniformMatrix4fv):
+        position = shaders.glGetUniformLocation(self.id, name)
+        if position < 0:
+            raise ValueError(f'{position} {name} in {self.id}')
+        return func(position, 1, GL_FALSE, matrix)
+
 
 class Buffer:
     def __init__(self, kind=GL_ARRAY_BUFFER):
@@ -85,6 +92,8 @@ class Vao:
 class GlWindow:
     def __init__(self, w, h, title: str):
         self.window = glfw.create_window(w, h, title, None, None)
+        self.height = h
+        self.width = w
         if not self.window:
             raise GlfwError
 
@@ -97,6 +106,10 @@ class GlWindow:
 
     def render(self, *args, **kwargs) -> None:
         pass
+
+    @property
+    def ratio(self):
+        return self.width / self.height
 
 
 def vec_iter(vec_list, vsize=3):
@@ -131,9 +144,13 @@ def main():
         0.0, 1.0, 0.0,
         1.0, 1.0, 0.0
     )
+    matrix_projection = Matrix44.perspective_projection(75, window.ratio, 1, 1000)
+    matrix_move = Matrix44.identity()
+    print(matrix_projection)
+    print(matrix_move)
 
     program.send_attr('vertex', plane, step=3, total_size=len(plane) * 3)
-
+    program.send_matrix('projection', matrix_projection)
     window.run_loop()
     glfw.terminate()
 
